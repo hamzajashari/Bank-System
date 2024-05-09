@@ -1,23 +1,29 @@
 package com.bank.Service.IService;
 
 import com.bank.Model.*;
+import com.bank.Model.Account.AccountRequest;
+import com.bank.Model.Account.AccountResponse;
+
 import java.math.BigDecimal;
 import com.bank.Model.Enum.FeeType;
+import com.bank.Model.Transaction.Transaction;
+import com.bank.Model.Transaction.TransactionRequest;
+import com.bank.Model.Transaction.TransactionResponse;
 
 import java.util.*;
 
 public interface IBankService {
     Bank create(Bank bank);
 
-    Account create(String name, Account account);
+    AccountResponse create(String name, AccountRequest account);
 
-    Transaction create(String name, Transaction transaction, FeeType feeType);
+    TransactionResponse create(String name, TransactionRequest transactionRequest, FeeType feeType);
 
-    List<Account> getAll(String name);
+    List<AccountResponse> getAll(String name);
 
-    Account checkBalance(String name, String accountId);
+    AccountResponse checkBalance(String name, String accountId);
 
-    List<Transaction> getAllTransactionsByAccountId(String id);
+    List<TransactionResponse> getAllTransactionsByAccountId(String id);
 
     BigDecimal getTotalTransferAmount(String name);
 

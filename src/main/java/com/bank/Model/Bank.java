@@ -6,9 +6,10 @@ import java.util.List;
 import javax.persistence.*;
 import java.math.BigDecimal;
 
-import com.bank.Exception.AccountNotFound;
+import com.bank.Exception.AccountNotFoundException;
 import com.bank.Exception.InsufficientFundsException;
 import com.bank.Model.Abstract.AbstractModel;
+import com.bank.Model.Account.Account;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -19,10 +20,10 @@ import lombok.Setter;
 @Setter
 public class Bank extends AbstractModel {
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false,unique = true)
     private String name;
 
-    @OneToMany(mappedBy = "bank", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "bank", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     public List<Account> accounts = new ArrayList<>();
 
     @Column(name = "fee_amount")
@@ -56,6 +57,6 @@ public class Bank extends AbstractModel {
         return this.accounts.stream()
                 .filter(account -> account.getId().equals(accountId))
                 .findFirst()
-                .orElseThrow(() -> AccountNotFound.withId(accountId));
+                .orElseThrow(() -> AccountNotFoundException.withId(accountId));
     }
 }

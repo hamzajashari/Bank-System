@@ -1,84 +1,114 @@
 package com.bank.Service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.*;
+
+import javax.transaction.Transactional;
+
 import static com.bank.Model.Enum.FeeType.FLAT;
 import static com.bank.Model.Enum.FeeType.PERCENT;
 
+import com.bank.Exception.AccountNotFoundException;
+import com.bank.Exception.BankNotFoundException;
+import com.bank.Exception.DuplicateEntryException;
 import com.bank.Exception.InsufficientFundsException;
-import com.bank.Model.Account;
 import com.bank.Model.Bank;
-import com.bank.Model.Transaction;
+import com.bank.Model.Account.AccountRequest;
+import com.bank.Model.Account.AccountResponse;
 import com.bank.Model.Enum.FeeType;
+import com.bank.Model.Mapper.Mapper;
+import com.bank.Model.Transaction.Transaction;
+import com.bank.Model.Transaction.TransactionRequest;
+import com.bank.Model.Transaction.TransactionResponse;
 import com.bank.Repository.BankRepository;
 import com.bank.Repository.TransactionRepository;
 import com.bank.Service.IService.IBankService;
 
-
+import lombok.RequiredArgsConstructor;
 @Service
+@RequiredArgsConstructor
 public class BankService implements IBankService {
 
-    private final BankRepository repository;
+    private final BankRepository bankRepository;
     private final TransactionRepository transactionRepository;
+    private final Mapper mapper;
 
-    @Autowired
-    public BankService(BankRepository repository, TransactionRepository transactionRepository) {
-        this.repository = repository;
-        this.transactionRepository = transactionRepository;
-    }
-
-    @Override
+    @Transactional
     public Bank create(Bank bank) {
-        repository.save(bank);
+        if (bankRepository.findBankByName(bank.getName()).isPresent()) {
+            throw new DuplicateEntryException("Bank with name " + bank.getName() + " already exists");
+        }
+        bankRepository.save(bank);
         return bank;
     }
 
-    @Override
-    public Account create(String name, Account account) {
-        var bank = repository.findBankByName(name).orElseThrow();
+    @Transactional
+    public AccountResponse create(String name, AccountRequest accountRequest) {
+        var bank = bankRepository.findBankByName(name)
+                .orElseThrow(() -> new BankNotFoundException(name));
+        
+
+        if (bank.accounts.stream().anyMatch(account -> account.getUser().equals(accountRequest.user()))) {
+            throw new DuplicateEntryException("Account with name " + accountRequest.user() + " already exists.");
+        }
+
+        var account = mapper.map(accountRequest);
         bank.addAccount(account);
-        return account;
+        return mapper.map(account);
     }
 
-    @Override
-    public Transaction create(String name, Transaction transaction, FeeType feeType) {
-        var bank = repository.findBankByName(name).orElseThrow();
+    @Transactional
+    public TransactionResponse create(String name, TransactionRequest transactionRequest, FeeType feeType) {
+        var bank = bankRepository.findBankByName(name)
+                .orElseThrow(() -> new BankNotFoundException(name));
+        
+        // You need to implement similar checks for transaction not found and duplicate transaction creation.
+        
+        var transaction = mapper.map(transactionRequest);
         performTransaction(bank, transaction, feeType);
         transactionRepository.save(transaction);
-        return transaction;
+        return mapper.map(transaction);
     }
 
-    @Override
-    public List<Account> getAll(String name) {
-        var bank = repository.findBankByName(name).orElseThrow();
-        return bank.accounts.stream().toList();
+    @Transactional
+    public List<AccountResponse> getAll(String name) {
+        var bank = bankRepository.findBankByName(name)
+                .orElseThrow(() -> new BankNotFoundException(name));
+
+        return bank.accounts.stream()
+                .map(mapper::map).toList();
     }
 
-    @Override
-    public Account checkBalance(String name, String accountId) {
-        var bank = repository.findBankByName(name).orElseThrow();
+    @Transactional
+    public AccountResponse checkBalance(String name, String accountId) {
+        var bank = bankRepository.findBankByName(name)
+                .orElseThrow(() -> new BankNotFoundException(name));
         var account = bank.getAccountById(accountId);
-        return account;
+        if (account == null) {
+            throw new AccountNotFoundException("Account with ID " + accountId + " not found.");
+        }
+        return mapper.map(account);
     }
 
-    @Override
-    public List<Transaction> getAllTransactionsByAccountId(String id) {
-        return transactionRepository.findAllByOriginatingAccountId(id).stream().toList();
+    @Transactional
+    public List<TransactionResponse> getAllTransactionsByAccountId(String id) {
+        return transactionRepository.findAllByOriginatingAccountId(id).stream().map(mapper::map).toList();
     }
 
-    @Override
+    @Transactional
     public BigDecimal getTotalTransferAmount(String name) {
-        var bank = repository.findBankByName(name).orElseThrow();
+        var bank = bankRepository.findBankByName(name)
+                .orElseThrow(() -> new BankNotFoundException(name));
         var totalFeeAmount = bank.getFeeAmount();
         return totalFeeAmount;
     }
 
-    @Override
+    @Transactional
     public BigDecimal getTotalFeeAmount(String name) {
-        var bank = repository.findBankByName(name).orElseThrow();
+        var bank = bankRepository.findBankByName(name)
+                .orElseThrow(() -> new BankNotFoundException(name));
         var totalTransferAmount = bank.getAmount();
         return totalTransferAmount;
     }
@@ -102,7 +132,7 @@ public class BankService implements IBankService {
             bank.addToTransferAmount(transaction.getAmount());
         } catch (InsufficientFundsException e) {
             System.err.println("Transaction failed: Insufficient funds in the originating account.");
-            e.printStackTrace(); 
+            e.printStackTrace();
         }
         accountTo.addToBalance(transaction.getAmount());
     }

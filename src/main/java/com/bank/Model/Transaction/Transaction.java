@@ -1,4 +1,4 @@
-package com.bank.Model;
+package com.bank.Model.Transaction;
 
 import javax.persistence.*;
 import java.math.BigDecimal;
@@ -26,14 +26,6 @@ public class Transaction extends AbstractModel {
 
     @Column(name = "reason")
     private String transactionReason;
-
-    public Transaction(BigDecimal amount, String originatingAccountId, String resultingAccountId,
-            String transactionReason) {
-        this.amount = amount;
-        this.originatingAccountId = originatingAccountId;
-        this.resultingAccountId = resultingAccountId;
-        this.transactionReason = transactionReason;
-    }
 
     public void calculateTransactionFee(BigDecimal fee, FeeType feeType) {
         if (feeType.equals(FeeType.PERCENT)) {
