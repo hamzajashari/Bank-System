@@ -1,52 +1,42 @@
 package com.bank.Model;
 
-import java.util.List;
-
-import com.bank.Exception.InsufficientFundsException;
+import static java.math.BigDecimal.ZERO;
 import javax.persistence.*;
+import java.math.BigDecimal;
+
+import com.bank.Exception.InvalidAmountException;
+import com.bank.Model.Abstract.AbstractModel;
+
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "accounts")
-@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
-public abstract class Account {
-    @Id
-    private String accountId;
-    private String userName;
-    private double balance;
+@Getter
+@Setter
+public class Account extends AbstractModel {
 
-    public Account(String accountId, String userName, double balance) {
-        this.accountId = accountId;
-        this.userName = userName;
-        this.balance = balance;
+    @Column(name = "user", nullable = false)
+    private String user;
+  
+    @Column(name = "balance", nullable = false)
+    private BigDecimal balance;
+  
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bank_id")
+    private Bank bank;
+  
+    @Transient
+    public void addToBalance(BigDecimal amount) {
+      this.balance = this.balance.add(amount);
+    }
+  
+    @Transient
+    public void subtractFromBalance(BigDecimal amount) {
+      if (balance.subtract(amount).compareTo(ZERO) < 0) {
+        throw InvalidAmountException.notEnoughFunds(amount);
+      }
+      this.balance = this.balance.subtract(amount);
     }
     
-    public abstract void performTransaction(double amount, String transactionReason) throws InsufficientFundsException;
-
-    public abstract double checkBalance();
-
-    public abstract List<Transaction> getTransactionHistory();
-
-    public String getAccountId() {
-        return accountId;
-    }
-
-    public void setAccountId(String accountId) {
-        this.accountId = accountId;
-    }
-
-    public String getUserName() {
-        return userName;
-    }
-
-    public void setUserName(String userName) {
-        this.userName = userName;
-    }
-
-    public double getBalance() {
-        return balance;
-    }
-
-    public void setBalance(double balance) {
-        this.balance = balance;
-    }
 }

@@ -1,15 +1,33 @@
 package com.bank.Model;
 
-import org.springframework.boot.autoconfigure.domain.EntityScan;
+import javax.persistence.*;
+import java.math.BigDecimal;
+import static java.math.RoundingMode.HALF_UP;
+import com.bank.Model.Enum.FeeType;
+import com.bank.Model.Abstract.AbstractModel;
 
-@EntityScan
-public class Transaction {
-    private double amount;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "transactions")
+@Getter
+@Setter
+public class Transaction extends AbstractModel {
+
+    @Column(name = "amount", nullable = false)
+    private BigDecimal amount;
+
+    @Column(name = "account_from", nullable = false)
     private String originatingAccountId;
+
+    @Column(name = "account_to", nullable = false)
     private String resultingAccountId;
+
+    @Column(name = "reason")
     private String transactionReason;
 
-    public Transaction(double amount, String originatingAccountId, String resultingAccountId,
+    public Transaction(BigDecimal amount, String originatingAccountId, String resultingAccountId,
             String transactionReason) {
         this.amount = amount;
         this.originatingAccountId = originatingAccountId;
@@ -17,19 +35,17 @@ public class Transaction {
         this.transactionReason = transactionReason;
     }
 
-    public double getAmount() {
-        return amount;
+    public void calculateTransactionFee(BigDecimal fee, FeeType feeType) {
+        if (feeType.equals(FeeType.PERCENT)) {
+            BigDecimal feeAmount = amount.multiply(fee).divide(BigDecimal.valueOf(100), HALF_UP);
+            this.amount = amount.subtract(feeAmount);
+        } else if (feeType.equals(FeeType.FLAT)) {
+            this.amount = amount.subtract(fee);
+        }
     }
 
-    public String getOriginatingAccountId() {
-        return originatingAccountId;
+    public BigDecimal calculatePercentFee(BigDecimal fee) {
+        return amount.multiply(fee).divide(BigDecimal.valueOf(100), HALF_UP);
     }
 
-    public String getResultingAccountId() {
-        return resultingAccountId;
-    }
-
-    public String getTransactionReason() {
-        return transactionReason;
-    }
 }
